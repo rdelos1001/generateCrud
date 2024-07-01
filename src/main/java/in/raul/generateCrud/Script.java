@@ -42,7 +42,7 @@ public class Script {
 		if(AppProperties.isDev()) {
 			basePath += "C:/Users/raul/Desktop/generateScriptDest/";
 		} else {
-			basePath += "../../";
+			basePath += "./";
 		}
 		
 		String packageFolder = packageName.replace('.', '/');

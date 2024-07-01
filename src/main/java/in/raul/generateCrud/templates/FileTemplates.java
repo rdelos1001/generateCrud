@@ -72,7 +72,7 @@ public class FileTemplates {
 
 				private I{name} service;
 				public {name}Controller(I{name} service) {
-					
+					this.service = service;
 				}
 
 				@GetMapping

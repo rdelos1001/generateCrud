@@ -70,7 +70,7 @@ public class FileTemplates {
 			@RequestMapping("/api/v1/{name}")
 			public class {name}Controller {
 
-				public I{name} service;
+				private I{name} service;
 				public {name}Controller(I{name} service) {
 					
 				}
@@ -100,7 +100,7 @@ public class FileTemplates {
 				}
 				
 				@PutMapping("/{id}")
-				public ResponseEntity<{name}> update( @PathVariable Long id, @RequestBody {name}DTO dto ){
+				public ResponseEntity<{name}DTO> update( @PathVariable Long id, @RequestBody {name}DTO dto ){
 
 					if(service.findById(id) == null) {
 						return ResponseEntity.notFound().build();
@@ -110,11 +110,11 @@ public class FileTemplates {
 					{name}.setId(id);
 					
 					service.save({name});
-					return ResponseEntity.ok({name});
+					return ResponseEntity.ok({name}.toDTO());
 				}
 				
 				@PatchMapping("/{id}")
-				public ResponseEntity<{name}> patch( @PathVariable Long id, @RequestBody {name}DTO dto ){
+				public ResponseEntity<{name}DTO> patch( @PathVariable Long id, @RequestBody {name}DTO dto ){
 
 					if(service.findById(id) == null) {
 						return ResponseEntity.notFound().build();
@@ -174,9 +174,8 @@ public class FileTemplates {
 	private String ENTITY = """
 			package {packageName}.models.entity;
 
-			import org.springframework.data.annotation.Id;
-
 			import {packageName}.dto.{name}DTO;
+			import jakarta.persistence.Id;
 			import jakarta.persistence.Entity;
 			import jakarta.persistence.GeneratedValue;
 			import jakarta.persistence.GenerationType;

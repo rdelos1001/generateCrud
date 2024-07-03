@@ -66,7 +66,7 @@ public class Script {
 	    //Dao
   		contenido = ft.getDaoTemplate();
   		path= basePath + "models/dao/";
-  		fileName = path +name+"Dao.java";
+  		fileName = path +"I"+name+"Dao.java";
   		createFile(fileName, contenido);
 	    
   	    

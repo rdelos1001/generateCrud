@@ -3,8 +3,7 @@ HELP.md
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-target/classes/
-target/test-classes/
+target/**
 ### STS ###
 .apt_generated
 .classpath

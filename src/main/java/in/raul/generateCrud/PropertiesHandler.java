@@ -19,13 +19,5 @@ public class PropertiesHandler {
 			
 		}
 		
-		if(!PropertiesHandler.args.containsKey("--name")) {
-			PropertiesHandler.args.put("--name", AppProperties.getName());
-		}
-		
-		if(!PropertiesHandler.args.containsKey("--packageName")) {
-			PropertiesHandler.args.put("--packageName", AppProperties.getPackage());
-		}
-		
 	}
 }

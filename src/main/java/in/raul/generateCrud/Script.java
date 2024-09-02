@@ -5,41 +5,62 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.MissingFormatArgumentException;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import in.raul.generateCrud.templates.FileTemplates;
 import jakarta.annotation.PreDestroy;
 
+import java.util.Scanner;
+
 @Service
 public class Script {
+	
+	@Value("${dev}")
+	private boolean dev;
 	
 	Logger logger = LogManager.getLogger(Script.class);
 	
 	@PreDestroy
 	public void generate() {
+		String name = "";
+		String packageName = "";
+		Scanner scanner = null;
 		logger.info("Ejecutando script");
 		
 		HashMap<String, String> args = PropertiesHandler.args;
 		
-		if( !args.containsKey("--name") || !args.containsKey("--packageName") ) {
-			logger.fatal("Faltan las flags --name o --packageName");
-			throw new MissingFormatArgumentException("Faltan las flags --name o --packageName");
+		if( !args.containsKey("--name") ) {
+			scanner = new Scanner(System.in);
+			
+			logger.info("Introduce el nombre de la entidad");
+			name = scanner.nextLine();
+		} else {
+			name = args.get("--name");
+		}
+
+		if( !args.containsKey("--packageName") ) {
+			
+			scanner = scanner == null ? new Scanner(System.in) : scanner;
+			
+			logger.info("Introduce el nombre del paquete ej: com.example");
+			packageName = scanner.nextLine();
+		} else {
+			packageName = args.get("--packageName");
 		}
 		
-		String name = args.get("--name");
+		if(scanner != null) {
+			scanner.close();
+		}
 		name = name.substring(0, 1).toUpperCase().concat(name.substring(1));
-
-		String packageName = args.get("--packageName");
 
 		FileTemplates ft = new FileTemplates(name, packageName);
 		
 		String basePath = "";
 		
-		if(AppProperties.isDev()) {
+		if(dev) {
 			basePath += "C:/Users/raul/Desktop/generateScriptDest/";
 		} else {
 			basePath += "./";

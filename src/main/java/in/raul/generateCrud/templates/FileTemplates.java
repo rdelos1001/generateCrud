@@ -93,7 +93,7 @@ public class FileTemplates {
 				}
 				
 				@PostMapping
-				public ResponseEntity<Long> create({name}DTO dto){
+				public ResponseEntity<Long> create(@RequestBody {name}DTO dto){
 					Long id = service.save(dto.toEntity());
 					
 					return ResponseEntity.ok(id);
@@ -244,7 +244,7 @@ public class FileTemplates {
 
 				@Override
 				public void deleteById(Long id) {
-					
+					dao.deleteById(id);
 				}
 
 			}

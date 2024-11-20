@@ -49,8 +49,14 @@ public class FileTemplates {
 	private String CONTROLLER = """
 			package {packageName}.controllers;
 
+			import java.util.GregorianCalendar;
 			import java.util.List;
-
+			import java.util.Optional;
+			import java.util.stream.Collectors;
+			
+			import org.apache.logging.log4j.LogManager;
+			import org.apache.logging.log4j.Logger;
+			import org.springframework.http.HttpStatus;
 			import org.springframework.http.ResponseEntity;
 			import org.springframework.web.bind.annotation.DeleteMapping;
 			import org.springframework.web.bind.annotation.GetMapping;
@@ -59,74 +65,278 @@ public class FileTemplates {
 			import org.springframework.web.bind.annotation.PostMapping;
 			import org.springframework.web.bind.annotation.PutMapping;
 			import org.springframework.web.bind.annotation.RequestBody;
+			import org.springframework.web.bind.annotation.RequestHeader;
 			import org.springframework.web.bind.annotation.RequestMapping;
+			import org.springframework.web.bind.annotation.RequestParam;
 			import org.springframework.web.bind.annotation.RestController;
+			
+			import {packageName}.auth.service.TokenService;
+			import {packageName}.models.entity.ErrorType;
+			import {packageName}.models.entity.{name};
+			import {packageName}.models.entity.User;
+			import {packageName}.models.service.IErrorType;
+			import {packageName}.models.service.IUser;
+			import {packageName}.utils.Utils;
+			
+			import io.swagger.v3.oas.annotations.Operation;
+			import io.swagger.v3.oas.annotations.Parameter;
+			import io.swagger.v3.oas.annotations.enums.ParameterIn;
+			import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 			import {packageName}.dto.{name}DTO;
-			import {packageName}.models.entity.{name};
 			import {packageName}.models.service.I{name};
 
 			@RestController
-			@RequestMapping("/api/v1/{name}")
+			@RequestMapping("/api/v1/{name}/")
 			public class {name}Controller {
 
 				private I{name} service;
-				public {name}Controller(I{name} service) {
+				
+				private TokenService tokenService;
+				private IErrorType errorService;
+				private IUser userService;
+				private static final Logger logger = LogManager.getLogger( {name}Controller.class );
+				
+				public {name}Controller(I{name} service, TokenService tokenService, IErrorType errorService, IUser userService) {
 					this.service = service;
-				}
-
-				@GetMapping
-				public ResponseEntity<List<{name}DTO>> findAll(){
-					List<{name}> list = service.findAll();
-					return ResponseEntity.ok( list.stream().map( {name}::toDTO ).toList() );
+					this.tokenService = tokenService;
+					this.errorService = errorService;
+					this.userService = userService;
 				}
 				
-				@GetMapping("{id}")
-				public ResponseEntity<{name}DTO> findById(@PathVariable Long id){
+				/**
+					 * Get all 
+					 * @see {name}DTO
+					 * @return
+				*/
+				@Operation(summary = "Get all {name}", tags = {"{name}"},
+					responses = {
+							@ApiResponse(responseCode = "200", description = "List of {name}", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = {name}DTO.class)))
+					},
+					parameters = {
+							@Parameter(name = "fields", description = "Optional parameter to specify which fields to include in the response.", in = ParameterIn.QUERY)
+					}
+				)
+				@GetMapping
+				public ResponseEntity<List<{name}DTO>> findAll(@RequestParam("fields") Optional<String[]> fieldsOPT){
+					List<{name}> list = service.findAll();
+					
+					List<{name}DTO> dtos = list.stream().map( {name}::toDTO ).collect(Collectors.toList());
+
+					if(fieldsOPT.isPresent() && !dtos.isEmpty()) {
+						String[] fields = fieldsOPT.get();
+						for (int i = 0; i < dtos.size(); i++) {
+							{name}DTO dto = Utils.applyFilter(dtos.get(i), {name}DTO.class, fields);
+							dtos.set(i, dto);
+						}
+					}
+					
+					return ResponseEntity.ok( dtos );
+				}
+				
+				/**
+				 * Get {name} by id
+				 * @param id
+				 * @param fieldsOPT Fields to filter
+				 * @return
+				 */
+			
+				@Operation(summary = "Get {name} by id", tags = {"{name}"},
+					responses = {
+							@ApiResponse(responseCode = "200", description = "{name} found", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = {name}DTO.class))),
+							@ApiResponse(responseCode = "404", description = "{name} not found", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class)))
+					},
+					parameters = {
+							@Parameter(name = "fields", description = "Optional parameter to specify which fields to include in the response.", in = ParameterIn.QUERY)
+					}
+				)
+				@GetMapping("{id}/")
+				public ResponseEntity<?> findById(@PathVariable Long id){
 					{name} entity = service.findById(id);
 					
 					if(entity == null) {
-						return ResponseEntity.ok().build();
+						ErrorType error = this.errorService.findByError("notFound-001");
+						error.setMessageParam("{name}",id);
+						logger.error(error.getMessage());
+						return ResponseEntity.status(error.getStatus()).body(error);
 					}
 					
 					return ResponseEntity.ok(entity.toDTO());
 				}
 				
+				/**
+				 * Create a new {name}
+				 * @param dto
+				 * @return
+				 */
+				@Operation(summary = "Create a new {name}", tags = {"{name}"},
+					responses = {
+							@ApiResponse(responseCode = "200", description = "{name} created", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = {name}DTO.class))),
+							@ApiResponse(responseCode = "401", description = "Unauthorized", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class))),
+							@ApiResponse(responseCode = "400", description = "Bad request", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class))),
+							@ApiResponse(responseCode = "409", description = "Conflict", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class)))
+					}
+				)
 				@PostMapping
-				public ResponseEntity<Long> create(@RequestBody {name}DTO dto){
-					Long id = service.save(dto.toEntity());
-					
-					return ResponseEntity.ok(id);
-				}
-				
-				@PutMapping("/{id}")
-				public ResponseEntity<{name}DTO> update( @PathVariable Long id, @RequestBody {name}DTO dto ){
+				public ResponseEntity<?> create(@RequestBody {name}DTO dto, @RequestHeader("Authorization") String token){
 
-					if(service.findById(id) == null) {
-						return ResponseEntity.notFound().build();
+					String userId = tokenService.findUserIdByToken(token);
+					if (userId == null) {
+						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
+						error.setMessageParam(token);
+						logger.error(error.getMessage());
+						
+						return ResponseEntity.status(error.getStatus()).body( error );
+					}
+			
+					User user = userService.findById(userId);
+			
+					if (user == null) {
+						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
+						error.setMessageParam(userId);
+						logger.error(error.getMessage());
+						return ResponseEntity.status(error.getStatus()).body( error );
 					}
 					
-					{name} {name} = dto.toEntity();
-					{name}.setId(id);
-					
-					service.save({name});
-					return ResponseEntity.ok({name}.toDTO());
+					Long id = service.save(dto.toEntity());
+					logger.info("The user {} created a new {name} with id {}", user.getId(), id);
+					return ResponseEntity.status(HttpStatus.CREATED).body(id);
 				}
 				
-				@PatchMapping("/{id}")
-				public ResponseEntity<{name}DTO> patch( @PathVariable Long id, @RequestBody {name}DTO dto ){
+				
+				/**
+				 * Update a {name}
+				 * @param id
+				 * @param dto
+				 * @return
+				 */
+				@Operation(summary = "Update a {name}", tags = {"{name}"},
+					responses = {
+						@ApiResponse(responseCode = "200", description = "{name} updated", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = {name}DTO.class))),
+						@ApiResponse(responseCode = "401", description = "Unauthorized", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class))),
+						@ApiResponse(responseCode = "404", description = "{name} not found", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class))),
+						@ApiResponse(responseCode = "400", description = "Bad request", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class))),
+						@ApiResponse(responseCode = "409", description = "Conflict", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class)))	
+					},
+					parameters = {
+							@Parameter(name = "Authorization", description = "Token", required = true, in = ParameterIn.HEADER)
+					},
+					requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = {name}DTO.class)), required = true)
+				)
+				@PutMapping("{id}/")
+				public ResponseEntity<?> update( @PathVariable Long id, @RequestBody {name}DTO dto, @RequestHeader("Authorization") String token ){
 
-					if(service.findById(id) == null) {
-						return ResponseEntity.notFound().build();
+					String userId = tokenService.findUserIdByToken(token);
+					if (userId == null) {
+						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
+						error.setMessageParam(token);
+						logger.error(error.getMessage());
+						
+						return ResponseEntity.status(error.getStatus()).body( error );
+					}
+			
+					User user = userService.findById(userId);
+			
+					if (user == null) {
+						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
+						error.setMessageParam(userId);
+						logger.error(error.getMessage());
+						return ResponseEntity.status(error.getStatus()).body( error );
+					}
+					{name} entity = service.findById(id);
+					if( entity == null) {
+						ErrorType error = this.errorService.findByError("RESOURCE_NOT_FOUND");
+						logger.error(error.getMessage());
+						return ResponseEntity.status(error.getStatus()).body(error);
+					}
+					
+					{name} entity = dto.toEntity();
+					entity.setId(id);
+					
+					service.save(entity);
+					logger.info("The user {} updated the {name} with id {}", user.getId(), id);
+					return ResponseEntity.ok(entity.toDTO());
+				}
+				/**
+				 * Update a {name} partially
+				 * @param id
+				 * @param dto
+				 * @param token
+				 * @return
+				 */
+			 	@Operation(summary = "Update a {name} partially", tags = {"{name}"},
+					responses = {
+							@ApiResponse(responseCode = "200", description = "{name} updated", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = {name}DTO.class))),
+							@ApiResponse(responseCode = "401", description = "Unauthorized", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class))),
+							@ApiResponse(responseCode = "404", description = "{name} not found", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class))),
+							@ApiResponse(responseCode = "400", description = "Bad request", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class))),
+							@ApiResponse(responseCode = "409", description = "Conflict", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class)))	
+					},
+					parameters = {
+							@Parameter(name = "Authorization", description = "Token", required = true, in = ParameterIn.HEADER)
+					},
+					requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = {name}DTO.class)), required = true)
+				)
+				@PatchMapping("{id}/")
+				public ResponseEntity<?> patch( @PathVariable Long id, @RequestBody {name}DTO dto, @RequestHeader("Authorization") String token ){
+					String userId = tokenService.findUserIdByToken(token);
+					if (userId == null) {
+						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
+						error.setMessageParam(token);
+						logger.error(error.getMessage());
+						
+						return ResponseEntity.status(error.getStatus()).body( error );
+					}
+			
+					User user = userService.findById(userId);
+					if (user == null) {
+						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
+						error.setMessageParam(userId);
+						logger.error(error.getMessage());
+						return ResponseEntity.status(error.getStatus()).body( error );
+					}
+					{name} entity =	service.findById(id);
+					if( entity == null) {
+						ErrorType error = this.errorService.findByError("RESOURCE_NOT_FOUND");
+						logger.error(error.getMessage());
+						return ResponseEntity.status(error.getStatus()).body(error);
 					}
 					
 					//TODO Implements this method when you adds attributes
 					throw new Error("Method not implement");
 				}
-				
+				/**
+				 * Delete a {name} by id
+				 * @param id
+				 * @return
+				 */
+				@Operation(summary = "Delete a {name} by id", tags = {"{name}"},
+					responses = {
+							@ApiResponse(responseCode = "200", description = "{name} deleted"),
+							@ApiResponse(responseCode = "401", description = "Unauthorized", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class)))
+					}
+				)
 				@DeleteMapping("{id}")
-				public ResponseEntity<Void> deleteById(@PathVariable Long id){
+				public ResponseEntity<Void> deleteById(@PathVariable Long id, @RequestHeader("Authorization") String token){
+					String userId = tokenService.findUserIdByToken(token);
+					if (userId == null) {
+						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
+						error.setMessageParam(token);
+						logger.error(error.getMessage());
+						
+						return ResponseEntity.status(error.getStatus()).build();
+					}
+			
+					User user = userService.findById(userId);
+			
+					if (user == null) {
+						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
+						error.setMessageParam(userId);
+						logger.error(error.getMessage());
+						return ResponseEntity.status(error.getStatus()).build();
+					}
 					service.deleteById(id);
+					logger.info("The user {} deleted the {name} with id {}", user.getId(), id);
 					return ResponseEntity.ok().build();
 				}
 			}
@@ -136,7 +346,8 @@ public class FileTemplates {
 			package {packageName}.dto;
 
 			import {packageName}.models.entity.{name};
-
+			
+			@JsonInclude(JsonInclude.Include.NON_NULL)
 			public class {name}DTO {
 				private Long id;
 

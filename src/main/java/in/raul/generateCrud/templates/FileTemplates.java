@@ -83,7 +83,7 @@ public class FileTemplates {
 			import io.swagger.v3.oas.annotations.enums.ParameterIn;
 			import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
-			import {packageName}.dto.{name}DTO;
+			import {packageName}.models.dto.{name}DTO;
 			import {packageName}.models.service.I{name};
 
 			@RestController
@@ -118,19 +118,12 @@ public class FileTemplates {
 					}
 				)
 				@GetMapping
+				@Sort
+				@FieldFilter
 				public ResponseEntity<List<{name}DTO>> findAll(@RequestParam("fields") Optional<String[]> fieldsOPT,@RequestParam("sort_by") Optional<String> sortByOpt){
 					List<{name}> list = service.findAll();
 					
 					List<{name}DTO> dtos = list.stream().map( {name}::toDTO ).collect(Collectors.toList());
-					dtos = Utils.sortByParamName(dtos, sortByOpt, Optional.empty());
-
-					if(fieldsOPT.isPresent() && !dtos.isEmpty()) {
-						String[] fields = fieldsOPT.get();
-						for (int i = 0; i < dtos.size(); i++) {
-							{name}DTO dto = Utils.applyFilter(dtos.get(i), {name}DTO.class, fields);
-							dtos.set(i, dto);
-						}
-					}
 					
 					return ResponseEntity.ok( dtos );
 				}
@@ -339,7 +332,7 @@ public class FileTemplates {
 							""";
 	
 	private String DTO ="""
-			package {packageName}.dto;
+			package {packageName}.models.dto;
 			import com.fasterxml.jackson.annotation.JsonInclude;
 			import {packageName}.models.entity.{name};
 			
@@ -381,7 +374,7 @@ public class FileTemplates {
 	private String ENTITY = """
 			package {packageName}.models.entity;
 
-			import {packageName}.dto.{name}DTO;
+			import {packageName}.models.dto.{name}DTO;
 			import jakarta.persistence.Id;
 			import jakarta.persistence.Entity;
 			import jakarta.persistence.GeneratedValue;

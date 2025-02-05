@@ -80,7 +80,7 @@ public class Script {
 	
         //Dto
 		contenido = ft.getDtoTemplate();
-		path= basePath + "dto/";
+		path= basePath + "models/dto/";
 		fileName = path +name+"DTO.java";
 		createFile(fileName, contenido);
         

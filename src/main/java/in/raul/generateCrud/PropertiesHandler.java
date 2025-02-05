@@ -5,7 +5,7 @@ import java.util.LinkedHashMap;
 
 public class PropertiesHandler {
 
-	public static HashMap<String,String> args = null;
+	public static HashMap<String,String> args = new LinkedHashMap<>();
 	
 	public static void config(String args[]) {
 		

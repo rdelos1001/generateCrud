@@ -118,10 +118,11 @@ public class FileTemplates {
 					}
 				)
 				@GetMapping
-				public ResponseEntity<List<{name}DTO>> findAll(@RequestParam("fields") Optional<String[]> fieldsOPT){
+				public ResponseEntity<List<{name}DTO>> findAll(@RequestParam("fields") Optional<String[]> fieldsOPT,@RequestParam("sort_by") Optional<String> sortByOpt){
 					List<{name}> list = service.findAll();
 					
 					List<{name}DTO> dtos = list.stream().map( {name}::toDTO ).collect(Collectors.toList());
+					dtos = Utils.sortByParamName(dtos, sortByOpt, Optional.empty());
 
 					if(fieldsOPT.isPresent() && !dtos.isEmpty()) {
 						String[] fields = fieldsOPT.get();
@@ -155,8 +156,7 @@ public class FileTemplates {
 					{name} entity = service.findById(id);
 					
 					if(entity == null) {
-						ErrorType error = this.errorService.findByError("notFound-001");
-						error.setMessageParam("{name}",id);
+						ErrorType error = this.errorService.findByError("RESOURCE_NOT_FOUND");
 						logger.error(error.getMessage());
 						return ResponseEntity.status(error.getStatus()).body(error);
 					}
@@ -183,7 +183,6 @@ public class FileTemplates {
 					String userId = tokenService.findUserIdByToken(token);
 					if (userId == null) {
 						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
-						error.setMessageParam(token);
 						logger.error(error.getMessage());
 						
 						return ResponseEntity.status(error.getStatus()).body( error );
@@ -193,14 +192,16 @@ public class FileTemplates {
 			
 					if (user == null) {
 						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
-						error.setMessageParam(userId);
 						logger.error(error.getMessage());
 						return ResponseEntity.status(error.getStatus()).body( error );
 					}
-					
-					Long id = service.save(dto.toEntity());
+					{name} entity = new {name}();
+					//TODO: Set the entity attributes.
+					Long id = service.save(entity);
 					logger.info("The user {} created a new {name} with id {}", user.getId(), id);
-					return ResponseEntity.status(HttpStatus.CREATED).body(id);
+					{name}DTO response = new {name}DTO();
+					response.setId(id);
+					return ResponseEntity.status(HttpStatus.CREATED).body(response);
 				}
 				
 				
@@ -215,8 +216,7 @@ public class FileTemplates {
 						@ApiResponse(responseCode = "200", description = "{name} updated", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = {name}DTO.class))),
 						@ApiResponse(responseCode = "401", description = "Unauthorized", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class))),
 						@ApiResponse(responseCode = "404", description = "{name} not found", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class))),
-						@ApiResponse(responseCode = "400", description = "Bad request", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class))),
-						@ApiResponse(responseCode = "409", description = "Conflict", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class)))	
+						@ApiResponse(responseCode = "400", description = "Bad request", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class)))
 					},
 					parameters = {
 							@Parameter(name = "Authorization", description = "Token", required = true, in = ParameterIn.HEADER)
@@ -229,7 +229,6 @@ public class FileTemplates {
 					String userId = tokenService.findUserIdByToken(token);
 					if (userId == null) {
 						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
-						error.setMessageParam(token);
 						logger.error(error.getMessage());
 						
 						return ResponseEntity.status(error.getStatus()).body( error );
@@ -239,7 +238,6 @@ public class FileTemplates {
 			
 					if (user == null) {
 						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
-						error.setMessageParam(userId);
 						logger.error(error.getMessage());
 						return ResponseEntity.status(error.getStatus()).body( error );
 					}
@@ -250,9 +248,7 @@ public class FileTemplates {
 						return ResponseEntity.status(error.getStatus()).body(error);
 					}
 					
-					{name} entity = dto.toEntity();
-					entity.setId(id);
-					
+					//TODO: Set the entity attributes.
 					service.save(entity);
 					logger.info("The user {} updated the {name} with id {}", user.getId(), id);
 					return ResponseEntity.ok(entity.toDTO());
@@ -282,7 +278,6 @@ public class FileTemplates {
 					String userId = tokenService.findUserIdByToken(token);
 					if (userId == null) {
 						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
-						error.setMessageParam(token);
 						logger.error(error.getMessage());
 						
 						return ResponseEntity.status(error.getStatus()).body( error );
@@ -291,7 +286,6 @@ public class FileTemplates {
 					User user = userService.findById(userId);
 					if (user == null) {
 						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
-						error.setMessageParam(userId);
 						logger.error(error.getMessage());
 						return ResponseEntity.status(error.getStatus()).body( error );
 					}
@@ -302,8 +296,12 @@ public class FileTemplates {
 						return ResponseEntity.status(error.getStatus()).body(error);
 					}
 					
-					//TODO Implements this method when you adds attributes
-					throw new Error("Method not implement");
+					//TODO: Set the entity attributes.
+					
+					service.save(entity);
+					logger.info("The user {} updated the {name} with id {}", user.getId(), id);
+					
+					return ResponseEntity.ok(entity.toDTO());
 				}
 				/**
 				 * Delete a {name} by id
@@ -312,16 +310,15 @@ public class FileTemplates {
 				 */
 				@Operation(summary = "Delete a {name} by id", tags = {"{name}"},
 					responses = {
-							@ApiResponse(responseCode = "200", description = "{name} deleted"),
+							@ApiResponse(responseCode = "204", description = "{name} deleted"),
 							@ApiResponse(responseCode = "401", description = "Unauthorized", content = @io.swagger.v3.oas.annotations.media.Content(mediaType = "application/json", schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorType.class)))
 					}
 				)
-				@DeleteMapping("{id}")
+				@DeleteMapping("{id}/")
 				public ResponseEntity<Void> deleteById(@PathVariable Long id, @RequestHeader("Authorization") String token){
 					String userId = tokenService.findUserIdByToken(token);
 					if (userId == null) {
 						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
-						error.setMessageParam(token);
 						logger.error(error.getMessage());
 						
 						return ResponseEntity.status(error.getStatus()).build();
@@ -331,20 +328,19 @@ public class FileTemplates {
 			
 					if (user == null) {
 						ErrorType error = errorService.findByError("AUTHENTICATION_FAILED");
-						error.setMessageParam(userId);
 						logger.error(error.getMessage());
 						return ResponseEntity.status(error.getStatus()).build();
 					}
 					service.deleteById(id);
 					logger.info("The user {} deleted the {name} with id {}", user.getId(), id);
-					return ResponseEntity.ok().build();
+					return ResponseEntity.noContent().build();
 				}
 			}
 							""";
 	
 	private String DTO ="""
 			package {packageName}.dto;
-
+			import com.fasterxml.jackson.annotation.JsonInclude;
 			import {packageName}.models.entity.{name};
 			
 			@JsonInclude(JsonInclude.Include.NON_NULL)

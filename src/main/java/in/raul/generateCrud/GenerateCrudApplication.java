@@ -9,8 +9,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class GenerateCrudApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(GenerateCrudApplication.class, args);
 		PropertiesHandler.config(args);
+		SpringApplication.run(GenerateCrudApplication.class, args);
 	}
 
 }
